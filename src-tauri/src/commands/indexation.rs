@@ -86,10 +86,13 @@ pub async fn verify_indexation(
 
     // 4. For each URL, check indexation
     let mut confirmed_count: usize = 0;
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
     for (i, (url_id, url)) in urls.iter().enumerate() {
-        // 4a. Check cancellation token
+        // 4a. Check cancellation before and after each async operation
         if cancel_token.load(Ordering::Relaxed) {
             let _ = app.emit(
                 "indexation-progress",
@@ -101,7 +104,6 @@ pub async fn verify_indexation(
                     status: "cancelled".to_string(),
                 },
             );
-            // Clean up cancellation token
             let mut tokens = CANCEL_TOKENS.lock().map_err(|e| e.to_string())?;
             tokens.remove(&project_id);
             return Ok(confirmed_count);
@@ -109,6 +111,23 @@ pub async fn verify_indexation(
 
         // 4b. Call serper::check_url_indexed
         let is_indexed = serper::check_url_indexed(&client, &api_key, url).await?;
+
+        // 4b'. Re-check cancellation after HTTP request — skip DB write if cancelled
+        if cancel_token.load(Ordering::Relaxed) {
+            let _ = app.emit(
+                "indexation-progress",
+                IndexationProgress {
+                    project_id: project_id.clone(),
+                    checked: i,
+                    total,
+                    current_url: url.clone(),
+                    status: "cancelled".to_string(),
+                },
+            );
+            let mut tokens = CANCEL_TOKENS.lock().map_err(|e| e.to_string())?;
+            tokens.remove(&project_id);
+            return Ok(confirmed_count);
+        }
 
         // 4c. Update URL's indexed_status
         let new_status = if is_indexed {

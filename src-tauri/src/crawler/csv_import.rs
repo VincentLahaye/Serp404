@@ -79,16 +79,6 @@ pub fn extract_urls_from_column(content: &str, column_index: usize) -> Result<Ve
     Ok(urls)
 }
 
-/// Auto-extract URLs from the best detected column
-pub fn auto_extract_urls(content: &str) -> Result<Vec<String>, String> {
-    let columns = detect_url_columns(content)?;
-    if let Some(best) = columns.first() {
-        extract_urls_from_column(content, best.index)
-    } else {
-        Ok(Vec::new())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,14 +98,6 @@ mod tests {
         let urls = extract_urls_from_column(csv, 0).unwrap();
         assert_eq!(urls.len(), 3);
         assert_eq!(urls[0], "https://example.com/a");
-    }
-
-    #[test]
-    fn test_auto_extract_urls() {
-        let csv =
-            "Page,URL,Clicks\nHome,https://example.com/,100\nAbout,https://example.com/about,50";
-        let urls = auto_extract_urls(csv).unwrap();
-        assert_eq!(urls.len(), 2);
     }
 
     #[test]

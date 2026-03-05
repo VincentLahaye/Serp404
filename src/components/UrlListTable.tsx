@@ -145,7 +145,7 @@ export default function UrlListTable({
       {/* Table */}
       <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
         <table className="w-full text-sm">
-          <thead className="bg-white/5 text-gray-400 text-xs uppercase tracking-wide sticky top-0">
+          <thead className="bg-[#1a1a2e] text-gray-400 text-xs uppercase tracking-wide sticky top-0 z-10">
             <tr>
               <th
                 className="text-left p-3 cursor-pointer select-none hover:text-gray-200"

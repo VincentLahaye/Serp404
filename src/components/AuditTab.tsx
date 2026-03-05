@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useTauriEvent } from "../hooks/useTauriEvent";
 import ConcurrencySlider from "./ConcurrencySlider";
 import StatsBar from "./StatsBar";
@@ -194,15 +196,15 @@ export default function AuditTab({ projectId }: AuditTabProps) {
         projectId,
         filter: filter === "all" ? null : filter,
       });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `audit-${projectId.slice(0, 8)}-${filter}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+
+      const filePath = await save({
+        defaultPath: `audit-${projectId.slice(0, 8)}-${filter}.csv`,
+        filters: [{ name: "CSV", extensions: ["csv"] }],
+      });
+
+      if (!filePath) return; // User cancelled
+
+      await writeTextFile(filePath, csv);
     } catch (err) {
       console.error("Failed to export CSV:", err);
     }
