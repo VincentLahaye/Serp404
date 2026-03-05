@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import CollectionTab from "../components/CollectionTab";
 import IndexationTab from "../components/IndexationTab";
+import AuditTab from "../components/AuditTab";
 
 type Tab = "collection" | "indexation" | "audit";
 
@@ -106,11 +107,7 @@ export default function Project() {
           <IndexationTab projectId={project.id} />
         )}
         {activeTab === "audit" && (
-          <div className="bg-white/5 rounded-lg p-6 border border-white/10 text-center">
-            <p className="text-gray-400 text-sm">
-              Audit features coming soon.
-            </p>
-          </div>
+          <AuditTab projectId={project.id} />
         )}
       </div>
     </div>
