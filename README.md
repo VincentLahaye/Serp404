@@ -4,6 +4,14 @@ An open-source desktop application for SEO professionals and webmasters to detec
 
 Serp404 collects URLs from multiple sources, verifies their Google indexation status, audits their HTTP health, and exports actionable results as CSV.
 
+## Download
+
+[![GitHub Release](https://img.shields.io/github/v/release/VincentLahaye/Serp404?style=for-the-badge)](https://github.com/VincentLahaye/Serp404/releases/latest)
+
+**[Download the latest release](https://github.com/VincentLahaye/Serp404/releases/latest)** — available for Windows (.exe) and macOS (.dmg for Intel and Apple Silicon).
+
+> **macOS users:** The app is not yet notarized. Right-click the app and select "Open" to bypass Gatekeeper.
+
 ## Features
 
 - **Multi-source URL collection**: Sitemap.xml auto-parsing, CSV import (Screaming Frog, Ahrefs, SEMrush compatible), Google index discovery via serper.dev
@@ -38,7 +46,7 @@ Serp404 collects URLs from multiple sources, verifies their Google indexation st
 ## Installation
 
 ```bash
-git clone https://github.com/YourUsername/Serp404.git
+git clone https://github.com/VincentLahaye/Serp404.git
 cd Serp404
 npm install
 ```
