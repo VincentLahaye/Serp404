@@ -2,7 +2,13 @@ use rusqlite::{Connection, Result};
 use std::sync::Mutex;
 
 pub struct Database {
-    pub conn: Mutex<Connection>,
+    conn: Mutex<Connection>,
+}
+
+impl Database {
+    pub fn connection(&self) -> std::sync::MutexGuard<'_, Connection> {
+        self.conn.lock().expect("database mutex poisoned")
+    }
 }
 
 impl Database {
@@ -46,6 +52,7 @@ impl Database {
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS idx_urls_indexed_status ON urls(indexed_status);
         ",
         )?;
         Ok(())
@@ -65,7 +72,7 @@ mod tests {
     #[test]
     fn test_all_tables_exist() {
         let db = Database::new(":memory:").unwrap();
-        let conn = db.conn.lock().unwrap();
+        let conn = db.connection();
 
         let tables: Vec<String> = conn
             .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -83,7 +90,7 @@ mod tests {
     #[test]
     fn test_projects_schema() {
         let db = Database::new(":memory:").unwrap();
-        let conn = db.conn.lock().unwrap();
+        let conn = db.connection();
 
         let columns: Vec<String> = conn
             .prepare("PRAGMA table_info(projects)")
@@ -106,7 +113,7 @@ mod tests {
     #[test]
     fn test_urls_schema() {
         let db = Database::new(":memory:").unwrap();
-        let conn = db.conn.lock().unwrap();
+        let conn = db.connection();
 
         let columns: Vec<String> = conn
             .prepare("PRAGMA table_info(urls)")
@@ -141,7 +148,7 @@ mod tests {
     #[test]
     fn test_settings_schema() {
         let db = Database::new(":memory:").unwrap();
-        let conn = db.conn.lock().unwrap();
+        let conn = db.connection();
 
         let columns: Vec<String> = conn
             .prepare("PRAGMA table_info(settings)")
