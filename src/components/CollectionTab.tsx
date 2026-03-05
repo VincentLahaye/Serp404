@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "../hooks/useTauriEvent";
+import UrlListTable from "./UrlListTable";
+import type { UrlListEntry } from "./UrlListTable";
 
 interface CollectionTabProps {
   projectId: string;
@@ -38,6 +40,10 @@ export default function CollectionTab({ projectId, onStatsChange }: CollectionTa
   const [dbCounts, setDbCounts] = useState<Record<string, number> | null>(null);
   const [dbTotal, setDbTotal] = useState(0);
 
+  // URL list
+  const [urlList, setUrlList] = useState<UrlListEntry[]>([]);
+  const [sourceFilter, setSourceFilter] = useState("all");
+
   // CSV state
   const [csvColumns, setCsvColumns] = useState<CsvColumn[] | null>(null);
   const [csvContent, setCsvContent] = useState("");
@@ -47,7 +53,13 @@ export default function CollectionTab({ projectId, onStatsChange }: CollectionTa
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  // Load persisted URL counts by source from DB
+  const fetchUrlList = useCallback(() => {
+    invoke<UrlListEntry[]>("get_project_urls", { projectId, source: null, indexedStatus: null })
+      .then(setUrlList)
+      .catch(() => {});
+  }, [projectId]);
+
+  // Load persisted URL counts and list from DB
   useEffect(() => {
     invoke<Record<string, number>>("get_url_counts_by_source", { projectId })
       .then((counts) => {
@@ -56,7 +68,8 @@ export default function CollectionTab({ projectId, onStatsChange }: CollectionTa
         setDbTotal(total);
       })
       .catch(() => {});
-  }, [projectId]);
+    fetchUrlList();
+  }, [projectId, fetchUrlList]);
 
   useEffect(() => {
     invoke<string | null>("get_setting", { key: "serper_api_key" }).then(
@@ -94,6 +107,7 @@ export default function CollectionTab({ projectId, onStatsChange }: CollectionTa
           setDbTotal(total);
         })
         .catch(() => {});
+      fetchUrlList();
       onStatsChange?.();
     }
   });
@@ -409,6 +423,23 @@ export default function CollectionTab({ projectId, onStatsChange }: CollectionTa
             URL{totalUrls !== 1 ? "s" : ""} found across all sources
           </p>
         </div>
+      )}
+
+      {/* URL list */}
+      {urlList.length > 0 && (
+        <UrlListTable
+          urls={urlList}
+          filters={[
+            { key: "all", label: "All" },
+            { key: "sitemap", label: "Sitemap" },
+            { key: "serper", label: "Serper" },
+            { key: "csv", label: "CSV" },
+          ]}
+          activeFilter={sourceFilter}
+          onFilterChange={setSourceFilter}
+          filterField="source"
+          emptyMessage="No URLs collected yet."
+        />
       )}
     </div>
   );

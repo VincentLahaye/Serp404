@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            args: ""
+          - runner: macos-latest
+            args: "--target x86_64-apple-darwin"
+          - runner: macos-14
+            args: "--target aarch64-apple-darwin"
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.runner == 'macos-latest' && 'x86_64-apple-darwin' || matrix.runner == 'macos-14' && 'aarch64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Serp404 ${{ github.ref_name }}"
+          releaseBody: "Download the installer for your platform below."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

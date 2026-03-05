@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "../hooks/useTauriEvent";
+import UrlListTable from "./UrlListTable";
+import type { UrlListEntry } from "./UrlListTable";
 
 interface IndexationTabProps {
   projectId: string;
@@ -26,6 +28,14 @@ export default function IndexationTab({ projectId, stats, onStatsChange }: Index
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<IndexationProgress | null>(null);
+  const [urlList, setUrlList] = useState<UrlListEntry[]>([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const fetchUrlList = useCallback(() => {
+    invoke<UrlListEntry[]>("get_project_urls", { projectId, source: null, indexedStatus: null })
+      .then(setUrlList)
+      .catch(() => {});
+  }, [projectId]);
 
   useEffect(() => {
     setLoading(true);
@@ -39,7 +49,8 @@ export default function IndexationTab({ projectId, stats, onStatsChange }: Index
       .finally(() => {
         setLoading(false);
       });
-  }, [projectId]);
+    fetchUrlList();
+  }, [projectId, fetchUrlList]);
 
   useTauriEvent<IndexationProgress>("indexation-progress", (payload) => {
     if (payload.projectId !== projectId) return;
@@ -47,10 +58,11 @@ export default function IndexationTab({ projectId, stats, onStatsChange }: Index
 
     if (payload.status === "done" || payload.status === "cancelled") {
       setRunning(false);
-      // Refresh count after completion
+      // Refresh count and URL list after completion
       invoke<number>("get_unverified_count", { projectId }).then((count) => {
         setUnverifiedCount(count);
       });
+      fetchUrlList();
       onStatsChange?.();
     }
   });
@@ -233,6 +245,23 @@ export default function IndexationTab({ projectId, stats, onStatsChange }: Index
             )}
           </div>
         </div>
+      )}
+
+      {/* URL list */}
+      {urlList.length > 0 && (
+        <UrlListTable
+          urls={urlList}
+          filters={[
+            { key: "all", label: "All" },
+            { key: "confirmed", label: "Confirmed" },
+            { key: "not_indexed", label: "Not indexed" },
+            { key: "unknown", label: "Pending" },
+          ]}
+          activeFilter={statusFilter}
+          onFilterChange={setStatusFilter}
+          filterField="indexedStatus"
+          emptyMessage="No URLs to display."
+        />
       )}
     </div>
   );
