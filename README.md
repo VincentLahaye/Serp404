@@ -8,7 +8,11 @@ Serp404 collects URLs from multiple sources, verifies their Google indexation st
 
 [![GitHub Release](https://img.shields.io/github/v/release/VincentLahaye/Serp404?style=for-the-badge)](https://github.com/VincentLahaye/Serp404/releases/latest)
 
-**[Download the latest release](https://github.com/VincentLahaye/Serp404/releases/latest)** — available for Windows (.exe) and macOS (.dmg for Intel and Apple Silicon).
+| Platform | Download |
+|---|---|
+| **Windows (x64)** | [Serp404_windows_x64.exe](https://github.com/VincentLahaye/Serp404/releases/latest/download/Serp404_windows_x64.exe) |
+| **macOS (Apple Silicon)** | [Serp404_macos_arm64.dmg](https://github.com/VincentLahaye/Serp404/releases/latest/download/Serp404_macos_arm64.dmg) |
+| **macOS (Intel)** | [Serp404_macos_x64.dmg](https://github.com/VincentLahaye/Serp404/releases/latest/download/Serp404_macos_x64.dmg) |
 
 > **macOS users:** The app is not yet notarized. Right-click the app and select "Open" to bypass Gatekeeper.
 

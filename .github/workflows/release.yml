@@ -8,18 +8,22 @@ on:
 
 jobs:
   build:
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - runner: windows-latest
             args: ""
+            bundle_glob: "nsis/*.exe"
+            stable_name: Serp404_windows_x64.exe
           - runner: macos-latest
             args: "--target x86_64-apple-darwin"
+            bundle_glob: "dmg/*.dmg"
+            stable_name: Serp404_macos_x64.dmg
           - runner: macos-14
             args: "--target aarch64-apple-darwin"
+            bundle_glob: "dmg/*.dmg"
+            stable_name: Serp404_macos_arm64.dmg
 
     runs-on: ${{ matrix.runner }}
 
@@ -42,12 +46,45 @@ jobs:
       - run: npm ci
 
       - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Serp404 ${{ github.ref_name }}"
-          releaseBody: "Download the installer for your platform below."
-          releaseDraft: false
-          prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Rename artifact to stable name
+        shell: bash
+        run: |
+          ARTIFACT=$(find src-tauri/target -path "*/bundle/${{ matrix.bundle_glob }}" | head -1)
+          cp "$ARTIFACT" "${{ matrix.stable_name }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.stable_name }}
+          path: ${{ matrix.stable_name }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: "Serp404 ${{ github.ref_name }}"
+          body: |
+            ## Download
+
+            | Platform | Installer |
+            |---|---|
+            | Windows (x64) | [Serp404_windows_x64.exe](https://github.com/${{ github.repository }}/releases/latest/download/Serp404_windows_x64.exe) |
+            | macOS (Apple Silicon) | [Serp404_macos_arm64.dmg](https://github.com/${{ github.repository }}/releases/latest/download/Serp404_macos_arm64.dmg) |
+            | macOS (Intel) | [Serp404_macos_x64.dmg](https://github.com/${{ github.repository }}/releases/latest/download/Serp404_macos_x64.dmg) |
+
+            > **macOS users:** Right-click the app and select "Open" to bypass Gatekeeper (app is not yet notarized).
+          files: |
+            Serp404_windows_x64.exe
+            Serp404_macos_x64.dmg
+            Serp404_macos_arm64.dmg
