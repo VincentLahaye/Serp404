@@ -28,6 +28,10 @@ pub fn run() {
             commands::projects::list_projects,
             commands::projects::get_project,
             commands::projects::delete_project,
+            commands::settings::get_setting,
+            commands::settings::set_setting,
+            commands::settings::get_all_settings,
+            commands::settings::test_serper_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
