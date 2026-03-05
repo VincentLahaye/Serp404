@@ -1,8 +1,21 @@
+import { HashRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+import Home from "./pages/Home";
+import Project from "./pages/Project";
+import Settings from "./pages/Settings";
+
 function App() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
-      <h1 className="text-3xl font-bold">Serp404</h1>
-    </div>
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="project/:id" element={<Project />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+      </Routes>
+    </HashRouter>
   );
 }
+
 export default App;
