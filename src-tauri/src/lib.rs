@@ -37,6 +37,9 @@ pub fn run() {
             commands::collection::detect_csv_columns,
             commands::collection::collect_from_csv,
             commands::collection::collect_from_serper,
+            commands::indexation::get_unverified_count,
+            commands::indexation::verify_indexation,
+            commands::indexation::stop_indexation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
