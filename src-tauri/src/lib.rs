@@ -1,3 +1,4 @@
+mod commands;
 mod db;
 mod models;
 
@@ -22,6 +23,12 @@ pub fn run() {
             app.manage(database);
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            commands::projects::create_project,
+            commands::projects::list_projects,
+            commands::projects::get_project,
+            commands::projects::delete_project,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
