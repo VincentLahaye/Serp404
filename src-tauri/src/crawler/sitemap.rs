@@ -86,12 +86,13 @@ pub async fn fetch_sitemap_urls(domain: &str) -> Result<Vec<String>, String> {
 ///
 /// If the response is a sitemap index, each child sitemap is fetched up to `depth` levels.
 /// Standard URL entries are collected into `out`.
-async fn fetch_sitemap_recursive(
-    client: &reqwest::Client,
-    url: &str,
+fn fetch_sitemap_recursive<'a>(
+    client: &'a reqwest::Client,
+    url: &'a str,
     depth: u32,
-    out: &mut Vec<String>,
-) -> Result<(), String> {
+    out: &'a mut Vec<String>,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
+    Box::pin(async move {
     if depth == 0 {
         return Ok(());
     }
@@ -131,6 +132,7 @@ async fn fetch_sitemap_recursive(
     }
 
     Ok(())
+    })
 }
 
 /// Check whether the XML content represents a sitemap index file.
