@@ -2,12 +2,46 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths:
+      - "src-tauri/tauri.conf.json"
   workflow_dispatch:
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from tauri.conf.json
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists
+        id: check
+        run: |
+          TAG="v$(jq -r '.version' src-tauri/tauri.conf.json)"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG already exists, skipping release"
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG does not exist, will release"
+          fi
+
   build:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -61,19 +95,26 @@ jobs:
           path: ${{ matrix.stable_name }}
 
   release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs: [check-version, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
 
+      - name: Create tag
+        run: |
+          git tag ${{ needs.check-version.outputs.tag }}
+          git push origin ${{ needs.check-version.outputs.tag }}
+
       - uses: softprops/action-gh-release@v2
         with:
-          name: "Serp404 ${{ github.ref_name }}"
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          name: "Serp404 ${{ needs.check-version.outputs.tag }}"
           body: |
             ## Download
 
