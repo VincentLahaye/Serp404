@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rusqlite::params;
 use tauri::State;
 use uuid::Uuid;
@@ -81,6 +83,105 @@ pub fn get_project(db: State<'_, Database>, id: String) -> Result<Project, Strin
         .map_err(|e| e.to_string())?;
 
     Ok(project)
+}
+
+#[tauri::command]
+pub fn get_url_counts_by_source(
+    db: State<'_, Database>,
+    project_id: String,
+) -> Result<HashMap<String, usize>, String> {
+    let conn = db.connection();
+    let mut stmt = conn
+        .prepare("SELECT source, COUNT(*) FROM urls WHERE project_id = ?1 GROUP BY source")
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, usize>(1)?))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut counts = HashMap::new();
+    for row in rows {
+        let (source, count) = row.map_err(|e| e.to_string())?;
+        counts.insert(source, count);
+    }
+
+    Ok(counts)
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UrlListEntry {
+    pub id: String,
+    pub url: String,
+    pub source: String,
+    pub indexed_status: String,
+}
+
+#[tauri::command]
+pub fn get_project_urls(
+    db: State<'_, Database>,
+    project_id: String,
+    source: Option<String>,
+    indexed_status: Option<String>,
+) -> Result<Vec<UrlListEntry>, String> {
+    let conn = db.connection();
+
+    let mut query = "SELECT id, url, source, indexed_status FROM urls WHERE project_id = ?1".to_string();
+    let mut param_count = 1;
+
+    if source.is_some() {
+        param_count += 1;
+        query.push_str(&format!(" AND source = ?{}", param_count));
+    }
+    if indexed_status.is_some() {
+        param_count += 1;
+        query.push_str(&format!(" AND indexed_status = ?{}", param_count));
+    }
+
+    query.push_str(" ORDER BY url ASC");
+
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+
+    let rows = match (&source, &indexed_status) {
+        (Some(s), Some(is)) => stmt.query_map(params![project_id, s, is], |row| {
+            Ok(UrlListEntry {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                source: row.get(2)?,
+                indexed_status: row.get(3)?,
+            })
+        }),
+        (Some(s), None) => stmt.query_map(params![project_id, s], |row| {
+            Ok(UrlListEntry {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                source: row.get(2)?,
+                indexed_status: row.get(3)?,
+            })
+        }),
+        (None, Some(is)) => stmt.query_map(params![project_id, is], |row| {
+            Ok(UrlListEntry {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                source: row.get(2)?,
+                indexed_status: row.get(3)?,
+            })
+        }),
+        (None, None) => stmt.query_map(params![project_id], |row| {
+            Ok(UrlListEntry {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                source: row.get(2)?,
+                indexed_status: row.get(3)?,
+            })
+        }),
+    }
+    .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

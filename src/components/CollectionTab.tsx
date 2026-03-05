@@ -4,6 +4,7 @@ import { useTauriEvent } from "../hooks/useTauriEvent";
 
 interface CollectionTabProps {
   projectId: string;
+  onStatsChange?: () => void;
 }
 
 interface CollectionProgress {
@@ -27,11 +28,15 @@ interface SourceStatus {
   status: string; // "running" | "done" | "error"
 }
 
-export default function CollectionTab({ projectId }: CollectionTabProps) {
+export default function CollectionTab({ projectId, onStatsChange }: CollectionTabProps) {
   const [hasSerperKey, setHasSerperKey] = useState(false);
   const [sources, setSources] = useState<Record<string, SourceStatus>>({});
   const [logs, setLogs] = useState<string[]>([]);
   const [totalUrls, setTotalUrls] = useState(0);
+
+  // Persisted counts from DB
+  const [dbCounts, setDbCounts] = useState<Record<string, number> | null>(null);
+  const [dbTotal, setDbTotal] = useState(0);
 
   // CSV state
   const [csvColumns, setCsvColumns] = useState<CsvColumn[] | null>(null);
@@ -41,6 +46,17 @@ export default function CollectionTab({ projectId }: CollectionTabProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Load persisted URL counts by source from DB
+  useEffect(() => {
+    invoke<Record<string, number>>("get_url_counts_by_source", { projectId })
+      .then((counts) => {
+        setDbCounts(counts);
+        const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
+        setDbTotal(total);
+      })
+      .catch(() => {});
+  }, [projectId]);
 
   useEffect(() => {
     invoke<string | null>("get_setting", { key: "serper_api_key" }).then(
@@ -68,9 +84,21 @@ export default function CollectionTab({ projectId }: CollectionTabProps) {
         return next.slice(-20);
       });
     }
+
+    // Refresh DB counts when a source finishes
+    if (payload.status === "done" || payload.status === "error") {
+      invoke<Record<string, number>>("get_url_counts_by_source", { projectId })
+        .then((counts) => {
+          setDbCounts(counts);
+          const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
+          setDbTotal(total);
+        })
+        .catch(() => {});
+      onStatsChange?.();
+    }
   });
 
-  // Recompute total whenever sources change
+  // Recompute session total whenever sources change
   useEffect(() => {
     const total = Object.values(sources).reduce(
       (sum, s) => sum + s.urlsFound,
@@ -205,8 +233,32 @@ export default function CollectionTab({ projectId }: CollectionTabProps) {
     return null;
   }
 
+  const sourceLabels: Record<string, string> = {
+    sitemap: "Sitemap",
+    serper: "Serper",
+    csv: "CSV",
+  };
+
   return (
     <div className="space-y-6">
+      {/* Persisted summary from DB */}
+      {dbCounts && dbTotal > 0 && Object.keys(sources).length === 0 && (
+        <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+          <p className="text-sm text-gray-200">
+            <span className="font-semibold text-white">{dbTotal}</span> URL
+            {dbTotal !== 1 ? "s" : ""} collected
+          </p>
+          <div className="flex gap-4 mt-2">
+            {Object.entries(dbCounts).map(([source, count]) => (
+              <span key={source} className="text-xs text-gray-400">
+                <span className="text-gray-300 font-medium">{count}</span>{" "}
+                from {sourceLabels[source] ?? source}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Source buttons */}
       <div className="bg-white/5 rounded-lg p-4 border border-white/10">
         <h3 className="text-sm font-medium text-gray-300 mb-3">

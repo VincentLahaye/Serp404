@@ -4,6 +4,13 @@ import { useTauriEvent } from "../hooks/useTauriEvent";
 
 interface IndexationTabProps {
   projectId: string;
+  stats: {
+    totalUrls: number;
+    confirmedIndexed: number;
+    notIndexed: number;
+    unknownStatus: number;
+  } | null;
+  onStatsChange?: () => void;
 }
 
 interface IndexationProgress {
@@ -14,7 +21,7 @@ interface IndexationProgress {
   status: string;
 }
 
-export default function IndexationTab({ projectId }: IndexationTabProps) {
+export default function IndexationTab({ projectId, stats, onStatsChange }: IndexationTabProps) {
   const [unverifiedCount, setUnverifiedCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -44,6 +51,7 @@ export default function IndexationTab({ projectId }: IndexationTabProps) {
       invoke<number>("get_unverified_count", { projectId }).then((count) => {
         setUnverifiedCount(count);
       });
+      onStatsChange?.();
     }
   });
 
@@ -71,51 +79,108 @@ export default function IndexationTab({ projectId }: IndexationTabProps) {
       ? Math.round((progress.checked / progress.total) * 100)
       : 0;
 
+  const hasUrls = stats && stats.totalUrls > 0;
+  const allConfirmed = stats && stats.unknownStatus === 0 && stats.confirmedIndexed > 0;
+
   return (
     <div className="space-y-6">
-      {/* Summary bar */}
-      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-        {loading ? (
+      {/* Status overview */}
+      {stats && hasUrls && (
+        <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+          <h3 className="text-sm font-medium text-gray-300 mb-3">
+            Indexation Status
+          </h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-400">
+                {stats.confirmedIndexed}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Confirmed</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-400">
+                {stats.notIndexed}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Not indexed</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-400">
+                {stats.unknownStatus}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">Pending</p>
+            </div>
+          </div>
+
+          {allConfirmed && (
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              All URLs are already confirmed as indexed.
+              {stats.confirmedIndexed > 0 && stats.notIndexed === 0 && (
+                <span className="block mt-1 text-gray-400">
+                  URLs collected via Serper are automatically marked as indexed.
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Empty state when no URLs at all */}
+      {stats && !hasUrls && !loading && (
+        <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+          <p className="text-sm text-gray-400 text-center py-4">
+            No URLs collected yet. Go to the Collection tab to add URLs first.
+          </p>
+        </div>
+      )}
+
+      {/* Verification section */}
+      {loading ? (
+        <div className="bg-white/5 rounded-lg p-4 border border-white/10">
           <div className="flex items-center gap-2 text-gray-400">
             <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin inline-block" />
             Loading...
           </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-200">
-              <span className="font-semibold text-white">
-                {unverifiedCount ?? 0}
-              </span>{" "}
-              URL{unverifiedCount !== 1 ? "s" : ""} need indexation verification
-            </p>
-            <p className="text-xs text-gray-500">
-              This will use approximately{" "}
-              <span className="text-gray-400">{unverifiedCount ?? 0}</span>{" "}
-              serper credits
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-        <div className="flex gap-3">
-          <button
-            onClick={handleVerify}
-            disabled={running || !unverifiedCount}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {running ? "Verifying..." : "Verify Indexation"}
-          </button>
-          <button
-            onClick={handleStop}
-            disabled={!running}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600/80 text-white hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Stop
-          </button>
         </div>
-      </div>
+      ) : unverifiedCount !== null && unverifiedCount > 0 ? (
+        <>
+          {/* Summary bar */}
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="space-y-2">
+              <p className="text-sm text-gray-200">
+                <span className="font-semibold text-white">
+                  {unverifiedCount}
+                </span>{" "}
+                URL{unverifiedCount !== 1 ? "s" : ""} need indexation verification
+              </p>
+              <p className="text-xs text-gray-500">
+                This will use approximately{" "}
+                <span className="text-gray-400">{unverifiedCount}</span>{" "}
+                serper credits
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <div className="flex gap-3">
+              <button
+                onClick={handleVerify}
+                disabled={running}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {running ? "Verifying..." : "Verify Indexation"}
+              </button>
+              <button
+                onClick={handleStop}
+                disabled={!running}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600/80 text-white hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Stop
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {/* Progress */}
       {progress && (

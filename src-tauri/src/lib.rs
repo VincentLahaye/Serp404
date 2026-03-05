@@ -29,6 +29,8 @@ pub fn run() {
             commands::projects::list_projects,
             commands::projects::get_project,
             commands::projects::delete_project,
+            commands::projects::get_url_counts_by_source,
+            commands::projects::get_project_urls,
             commands::settings::get_setting,
             commands::settings::set_setting,
             commands::settings::get_all_settings,

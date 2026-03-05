@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import CollectionTab from "../components/CollectionTab";
@@ -15,11 +15,37 @@ interface ProjectData {
   updatedAt: string;
 }
 
+interface ProjectStats {
+  totalUrls: number;
+  confirmedIndexed: number;
+  notIndexed: number;
+  unknownStatus: number;
+  checked: number;
+  okCount: number;
+  redirectCount: number;
+  notFoundCount: number;
+  errorCount: number;
+  emptyTitleCount: number;
+  slowCount: number;
+}
+
 const TABS: { key: Tab; label: string }[] = [
   { key: "collection", label: "Collection" },
   { key: "indexation", label: "Indexation" },
   { key: "audit", label: "Audit" },
 ];
+
+function tabBadge(tab: Tab, stats: ProjectStats | null): string | null {
+  if (!stats) return null;
+  switch (tab) {
+    case "collection":
+      return stats.totalUrls > 0 ? String(stats.totalUrls) : null;
+    case "indexation":
+      return stats.unknownStatus > 0 ? String(stats.unknownStatus) : null;
+    case "audit":
+      return stats.checked > 0 ? String(stats.checked) : null;
+  }
+}
 
 export default function Project() {
   const { id } = useParams();
@@ -27,6 +53,12 @@ export default function Project() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("collection");
+  const [stats, setStats] = useState<ProjectStats | null>(null);
+
+  const refreshStats = useCallback(() => {
+    if (!id) return;
+    invoke<ProjectStats>("get_project_stats", { projectId: id }).then(setStats).catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -42,7 +74,8 @@ export default function Project() {
       .finally(() => {
         setLoading(false);
       });
-  }, [id]);
+    refreshStats();
+  }, [id, refreshStats]);
 
   if (loading) {
     return (
@@ -83,28 +116,40 @@ export default function Project() {
 
       {/* Tab bar */}
       <div className="flex border-b border-white/10">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-3 text-sm font-medium cursor-pointer transition-colors ${
-              activeTab === tab.key
-                ? "text-white border-b-2 border-blue-500"
-                : "text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const badge = tabBadge(tab.key, stats);
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-3 text-sm font-medium cursor-pointer transition-colors flex items-center gap-2 ${
+                activeTab === tab.key
+                  ? "text-white border-b-2 border-blue-500"
+                  : "text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              {tab.label}
+              {badge && (
+                <span className="text-xs bg-white/10 text-gray-300 px-1.5 py-0.5 rounded-full font-mono">
+                  {badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}
       <div className="mt-6">
         {activeTab === "collection" && (
-          <CollectionTab projectId={project.id} />
+          <CollectionTab projectId={project.id} onStatsChange={refreshStats} />
         )}
         {activeTab === "indexation" && (
-          <IndexationTab projectId={project.id} />
+          <IndexationTab
+            projectId={project.id}
+            stats={stats}
+            onStatsChange={refreshStats}
+          />
         )}
         {activeTab === "audit" && (
           <AuditTab projectId={project.id} />
