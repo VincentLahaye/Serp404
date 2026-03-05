@@ -34,6 +34,8 @@ pub fn run() {
             commands::settings::get_all_settings,
             commands::settings::test_serper_key,
             commands::collection::collect_from_sitemap,
+            commands::collection::detect_csv_columns,
+            commands::collection::collect_from_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
