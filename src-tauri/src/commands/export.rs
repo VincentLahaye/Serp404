@@ -2,6 +2,7 @@ use rusqlite::params;
 use tauri::State;
 
 use crate::db::Database;
+use crate::models::UrlEntry;
 
 #[tauri::command]
 pub fn export_csv(
@@ -140,4 +141,52 @@ pub fn get_project_stats(
         .map_err(|e| e.to_string())?;
 
     Ok(stats)
+}
+
+#[tauri::command]
+pub fn get_checked_urls(
+    db: State<'_, Database>,
+    project_id: String,
+    filter: Option<String>,
+) -> Result<Vec<UrlEntry>, String> {
+    let conn = db.connection();
+    let mut query = "SELECT id, project_id, url, source, indexed_status, http_status, \
+                     response_time_ms, title, redirect_chain, error, checked_at \
+                     FROM urls WHERE project_id = ?1 AND checked_at IS NOT NULL"
+        .to_string();
+
+    match filter.as_deref() {
+        Some("404") => query.push_str(" AND http_status = 404"),
+        Some("redirects") => query.push_str(" AND http_status >= 300 AND http_status < 400"),
+        Some("empty_title") => {
+            query.push_str(" AND (title IS NULL OR title = '') AND http_status = 200")
+        }
+        Some("slow") => query.push_str(" AND response_time_ms > 2000"),
+        Some("errors") => query.push_str(" AND (http_status >= 500 OR error IS NOT NULL)"),
+        _ => {}
+    }
+
+    query.push_str(" ORDER BY checked_at DESC");
+
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![project_id], |row| {
+            Ok(UrlEntry {
+                id: row.get(0)?,
+                project_id: row.get(1)?,
+                url: row.get(2)?,
+                source: row.get(3)?,
+                indexed_status: row.get(4)?,
+                http_status: row.get(5)?,
+                response_time_ms: row.get(6)?,
+                title: row.get(7)?,
+                redirect_chain: row.get(8)?,
+                error: row.get(9)?,
+                checked_at: row.get(10)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
 }

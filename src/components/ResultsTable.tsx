@@ -50,7 +50,7 @@ function statusBadge(status: number | null, error: string | null) {
   }
   if (status === 404) {
     return (
-      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-600/30 text-red-400">
+      <span className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-600/30 text-red-400 font-bold">
         404
       </span>
     );

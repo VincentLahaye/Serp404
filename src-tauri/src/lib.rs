@@ -47,6 +47,7 @@ pub fn run() {
             commands::audit::update_concurrency,
             commands::export::export_csv,
             commands::export::get_project_stats,
+            commands::export::get_checked_urls,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

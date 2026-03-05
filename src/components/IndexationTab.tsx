@@ -38,7 +38,7 @@ export default function IndexationTab({ projectId }: IndexationTabProps) {
     if (payload.projectId !== projectId) return;
     setProgress(payload);
 
-    if (payload.status === "done" || payload.status === "stopped") {
+    if (payload.status === "done" || payload.status === "cancelled") {
       setRunning(false);
       // Refresh count after completion
       invoke<number>("get_unverified_count", { projectId }).then((count) => {
@@ -160,7 +160,7 @@ export default function IndexationTab({ projectId }: IndexationTabProps) {
                 <span className="text-xs text-green-400">Complete</span>
               </>
             )}
-            {progress.status === "stopped" && (
+            {progress.status === "cancelled" && (
               <>
                 <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />
                 <span className="text-xs text-yellow-400">Stopped</span>

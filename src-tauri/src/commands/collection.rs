@@ -229,24 +229,26 @@ pub async fn collect_from_serper(
     let num: u32 = 100;
     let max_pages: u32 = 50;
     let mut total_inserted: usize = 0;
+    let client = reqwest::Client::new();
 
     for page in 1..=max_pages {
-        let response = match serper::search_indexed_urls(&api_key, &domain, page, num).await {
-            Ok(r) => r,
-            Err(e) => {
-                let _ = app.emit(
-                    "collection-progress",
-                    CollectionProgress {
-                        project_id: project_id.clone(),
-                        source: "serper".to_string(),
-                        urls_found: total_inserted,
-                        status: "error".to_string(),
-                        message: Some(format!("Serper API error on page {}: {}", page, e)),
-                    },
-                );
-                return Err(e);
-            }
-        };
+        let response =
+            match serper::search_indexed_urls(&client, &api_key, &domain, page, num).await {
+                Ok(r) => r,
+                Err(e) => {
+                    let _ = app.emit(
+                        "collection-progress",
+                        CollectionProgress {
+                            project_id: project_id.clone(),
+                            source: "serper".to_string(),
+                            urls_found: total_inserted,
+                            status: "error".to_string(),
+                            message: Some(format!("Serper API error on page {}: {}", page, e)),
+                        },
+                    );
+                    return Err(e);
+                }
+            };
 
         let results = match response.organic {
             Some(ref r) if !r.is_empty() => r.clone(),

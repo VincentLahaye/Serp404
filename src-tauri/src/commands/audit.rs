@@ -82,7 +82,15 @@ pub async fn start_audit(
         return Ok(());
     }
 
-    // 2. Setup AuditControl with cancel/pause/concurrency atomics
+    // 2. Check if an audit is already running for this project
+    {
+        let state = AUDIT_STATE.lock().map_err(|e| e.to_string())?;
+        if state.contains_key(&project_id) {
+            return Err("Audit already running for this project".to_string());
+        }
+    }
+
+    // 3. Setup AuditControl with cancel/pause/concurrency atomics
     let cancel = Arc::new(AtomicBool::new(false));
     let pause = Arc::new(AtomicBool::new(false));
     let conc = Arc::new(AtomicU32::new(concurrency.max(1)));
@@ -298,10 +306,12 @@ pub fn resume_audit(project_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn stop_audit(project_id: String) -> Result<(), String> {
-    let state = AUDIT_STATE.lock().map_err(|e| e.to_string())?;
+    let mut state = AUDIT_STATE.lock().map_err(|e| e.to_string())?;
     if let Some(ctrl) = state.get(&project_id) {
         ctrl.cancel.store(true, Ordering::Relaxed);
     }
+    // Remove the entry so a new audit can be started after stopping
+    state.remove(&project_id);
     Ok(())
 }
 

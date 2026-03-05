@@ -85,6 +85,7 @@ pub async fn verify_indexation(
 
     // 4. For each URL, check indexation
     let mut confirmed_count: usize = 0;
+    let client = reqwest::Client::new();
 
     for (i, (url_id, url)) in urls.iter().enumerate() {
         // 4a. Check cancellation token
@@ -106,7 +107,7 @@ pub async fn verify_indexation(
         }
 
         // 4b. Call serper::check_url_indexed
-        let is_indexed = serper::check_url_indexed(&api_key, url).await?;
+        let is_indexed = serper::check_url_indexed(&client, &api_key, url).await?;
 
         // 4c. Update URL's indexed_status
         let new_status = if is_indexed {

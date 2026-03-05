@@ -55,7 +55,36 @@ export default function AuditTab({ projectId }: AuditTabProps) {
   const [total, setTotal] = useState(0);
   const [currentUrl, setCurrentUrl] = useState("");
 
-  // Load initial stats from DB on mount
+  // Fetch checked URLs from DB and map to UrlResult[]
+  const fetchCheckedUrls = useCallback(() => {
+    invoke<
+      Array<{
+        url: string;
+        httpStatus: number | null;
+        responseTimeMs: number | null;
+        title: string | null;
+        redirectChain: string | null;
+        error: string | null;
+      }>
+    >("get_checked_urls", { projectId, filter: null })
+      .then((entries) => {
+        setResults(
+          entries.map((e) => ({
+            url: e.url,
+            httpStatus: e.httpStatus,
+            responseTimeMs: e.responseTimeMs,
+            title: e.title,
+            redirectChain: e.redirectChain,
+            error: e.error,
+          })),
+        );
+      })
+      .catch((err) => {
+        console.error("Failed to load checked URLs:", err);
+      });
+  }, [projectId]);
+
+  // Load initial stats and results from DB on mount
   useEffect(() => {
     invoke<ProjectStats>("get_project_stats", { projectId })
       .then((s) => {
@@ -74,7 +103,9 @@ export default function AuditTab({ projectId }: AuditTabProps) {
       .catch((err) => {
         console.error("Failed to load project stats:", err);
       });
-  }, [projectId]);
+
+    fetchCheckedUrls();
+  }, [projectId, fetchCheckedUrls]);
 
   // Listen to real-time audit progress events
   useTauriEvent<AuditProgress>("audit-progress", (payload) => {
@@ -89,36 +120,17 @@ export default function AuditTab({ projectId }: AuditTabProps) {
     switch (payload.status) {
       case "running":
         setAuditState("running");
-        // Append result from the current URL progress event
-        if (payload.currentUrl && !payload.currentUrl.startsWith("(task error")) {
-          setResults((prev) => {
-            // Avoid duplicate URLs
-            if (prev.some((r) => r.url === payload.currentUrl)) return prev;
-            // We get the URL but not full details from the progress event.
-            // Add a placeholder entry; the real data is in the DB.
-            // We parse what we can from stats changes.
-            return [
-              ...prev,
-              {
-                url: payload.currentUrl,
-                httpStatus: null,
-                responseTimeMs: null,
-                title: null,
-                redirectChain: null,
-                error: null,
-              },
-            ];
-          });
-        }
         break;
       case "paused":
         setAuditState("paused");
         break;
       case "done":
         setAuditState("done");
+        fetchCheckedUrls();
         break;
       case "cancelled":
         setAuditState("done");
+        fetchCheckedUrls();
         break;
     }
   });

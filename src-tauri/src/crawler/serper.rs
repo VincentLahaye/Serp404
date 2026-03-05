@@ -24,12 +24,12 @@ pub struct OrganicResult {
 
 /// Search for indexed URLs using site: operator
 pub async fn search_indexed_urls(
+    client: &Client,
     api_key: &str,
     domain: &str,
     page: u32,
     num: u32,
 ) -> Result<SerperResponse, String> {
-    let client = Client::new();
     let res = client
         .post("https://google.serper.dev/search")
         .header("X-API-KEY", api_key)
@@ -53,8 +53,7 @@ pub async fn search_indexed_urls(
 }
 
 /// Check if a specific URL is indexed by Google
-pub async fn check_url_indexed(api_key: &str, url: &str) -> Result<bool, String> {
-    let client = Client::new();
+pub async fn check_url_indexed(client: &Client, api_key: &str, url: &str) -> Result<bool, String> {
     let res = client
         .post("https://google.serper.dev/search")
         .header("X-API-KEY", api_key)

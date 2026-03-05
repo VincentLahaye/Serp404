@@ -17,7 +17,8 @@ interface CollectionProgress {
 interface CsvColumn {
   index: number;
   name: string;
-  sample: string;
+  urlCount: number;
+  sampleUrl: string | null;
 }
 
 interface SourceStatus {
@@ -283,7 +284,7 @@ export default function CollectionTab({ projectId }: CollectionTabProps) {
                     {col.name}
                   </span>
                   <span className="text-xs text-gray-500 ml-2 font-mono">
-                    {col.sample}
+                    {col.sampleUrl ?? ""}
                   </span>
                 </div>
               </label>
