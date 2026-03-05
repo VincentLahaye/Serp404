@@ -40,6 +40,11 @@ pub fn run() {
             commands::indexation::get_unverified_count,
             commands::indexation::verify_indexation,
             commands::indexation::stop_indexation,
+            commands::audit::start_audit,
+            commands::audit::pause_audit,
+            commands::audit::resume_audit,
+            commands::audit::stop_audit,
+            commands::audit::update_concurrency,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
