@@ -47,13 +47,13 @@ pub async fn start_audit(
     project_id: String,
     concurrency: u32,
 ) -> Result<(), String> {
-    // 1. Query URLs where indexed_status = 'confirmed' AND checked_at IS NULL
+    // 1. Query confirmed URLs that haven't been audited yet (no http_status)
     let urls: Vec<(String, String)> = {
         let conn = db.connection();
         let mut stmt = conn
             .prepare(
                 "SELECT id, url FROM urls \
-                 WHERE project_id = ?1 AND indexed_status = 'confirmed' AND checked_at IS NULL",
+                 WHERE project_id = ?1 AND indexed_status = 'confirmed' AND http_status IS NULL",
             )
             .map_err(|e| e.to_string())?;
 
@@ -526,26 +526,37 @@ mod tests {
     // ── DB query tests (what start_audit fetches) ───────────────────
 
     #[test]
-    fn test_audit_query_selects_confirmed_unchecked_only() {
+    fn test_audit_query_selects_confirmed_unaudited_only() {
         let db = setup();
         let pid = create_project(&db, "audit-query.com");
 
-        // Should be selected: confirmed + unchecked
+        // Should be selected: confirmed + no http_status (not audited)
         insert_url_full(&db, &pid, "https://audit-query.com/a", "confirmed", None);
         insert_url_full(&db, &pid, "https://audit-query.com/b", "confirmed", None);
 
-        // Should NOT be selected: confirmed but already checked
-        insert_url_full(&db, &pid, "https://audit-query.com/c", "confirmed", Some("2024-01-01"));
+        // Should also be selected: confirmed with checked_at set (by indexation) but no http_status
+        let url_c = insert_url_full(&db, &pid, "https://audit-query.com/c", "confirmed", Some("2024-01-01"));
+
+        // Should NOT be selected: confirmed but already audited (has http_status)
+        let url_d = insert_url_full(&db, &pid, "https://audit-query.com/d", "confirmed", None);
+        {
+            let conn = db.connection();
+            conn.execute(
+                "UPDATE urls SET http_status = 200, checked_at = datetime('now') WHERE id = ?1",
+                params![url_d],
+            )
+            .unwrap();
+        }
 
         // Should NOT be selected: not confirmed
-        insert_url_full(&db, &pid, "https://audit-query.com/d", "unknown", None);
-        insert_url_full(&db, &pid, "https://audit-query.com/e", "not_indexed", None);
+        insert_url_full(&db, &pid, "https://audit-query.com/e", "unknown", None);
+        insert_url_full(&db, &pid, "https://audit-query.com/f", "not_indexed", None);
 
         let conn = db.connection();
         let mut stmt = conn
             .prepare(
                 "SELECT id, url FROM urls \
-                 WHERE project_id = ?1 AND indexed_status = 'confirmed' AND checked_at IS NULL",
+                 WHERE project_id = ?1 AND indexed_status = 'confirmed' AND http_status IS NULL",
             )
             .unwrap();
         let rows: Vec<(String, String)> = stmt
@@ -556,10 +567,12 @@ mod tests {
             .filter_map(|r| r.ok())
             .collect();
 
-        assert_eq!(rows.len(), 2);
+        assert_eq!(rows.len(), 3);
         let urls: Vec<&str> = rows.iter().map(|(_, u)| u.as_str()).collect();
         assert!(urls.contains(&"https://audit-query.com/a"));
         assert!(urls.contains(&"https://audit-query.com/b"));
+        assert!(urls.contains(&"https://audit-query.com/c"), "URLs with checked_at from indexation should still be auditable");
+        let _ = url_c; // used above
     }
 
     #[test]

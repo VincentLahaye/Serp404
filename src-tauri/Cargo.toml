@@ -1,6 +1,6 @@
 [package]
 name = "serp404"
-version = "0.2.0"
+version = "0.2.1"
 description = "SEO URL auditing desktop app"
 authors = ["Vincent Lahaye"]
 edition = "2021"

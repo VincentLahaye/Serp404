@@ -44,6 +44,7 @@ pub fn run() {
             commands::indexation::get_unverified_count,
             commands::indexation::verify_indexation,
             commands::indexation::stop_indexation,
+            commands::indexation::is_indexation_running,
             commands::audit::start_audit,
             commands::audit::pause_audit,
             commands::audit::resume_audit,

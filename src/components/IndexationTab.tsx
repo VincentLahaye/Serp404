@@ -39,12 +39,16 @@ export default function IndexationTab({ projectId, stats, onStatsChange }: Index
 
   useEffect(() => {
     setLoading(true);
-    invoke<number>("get_unverified_count", { projectId })
-      .then((count) => {
+    Promise.all([
+      invoke<number>("get_unverified_count", { projectId }),
+      invoke<boolean>("is_indexation_running", { projectId }),
+    ])
+      .then(([count, isRunning]) => {
         setUnverifiedCount(count);
+        setRunning(isRunning);
       })
       .catch((err) => {
-        console.error("Failed to get unverified count:", err);
+        console.error("Failed to load indexation state:", err);
       })
       .finally(() => {
         setLoading(false);

@@ -77,10 +77,13 @@ pub async fn verify_indexation(
         return Ok(0);
     }
 
-    // 3. Set up cancellation token
+    // 3. Set up cancellation token (reject if already running)
     let cancel_token = Arc::new(AtomicBool::new(false));
     {
         let mut tokens = CANCEL_TOKENS.lock().map_err(|e| e.to_string())?;
+        if tokens.contains_key(&project_id) {
+            return Err("Indexation already running for this project".to_string());
+        }
         tokens.insert(project_id.clone(), cancel_token.clone());
     }
 
@@ -188,6 +191,12 @@ pub fn stop_indexation(project_id: String) -> Result<(), String> {
         token.store(true, Ordering::Relaxed);
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn is_indexation_running(project_id: String) -> Result<bool, String> {
+    let tokens = CANCEL_TOKENS.lock().map_err(|e| e.to_string())?;
+    Ok(tokens.contains_key(&project_id))
 }
 
 #[cfg(test)]
