@@ -140,7 +140,7 @@ pub async fn verify_indexation(
         {
             let conn = db.connection();
             conn.execute(
-                "UPDATE urls SET indexed_status = ?1, checked_at = datetime('now') WHERE id = ?2",
+                "UPDATE urls SET indexed_status = ?1 WHERE id = ?2",
                 params![new_status, url_id],
             )
             .map_err(|e| e.to_string())?;
@@ -322,9 +322,9 @@ mod tests {
         )
         .unwrap();
 
-        // Simulate what verify_indexation does: update status and set checked_at
+        // Simulate what verify_indexation does: update status only
         conn.execute(
-            "UPDATE urls SET indexed_status = ?1, checked_at = datetime('now') WHERE id = ?2",
+            "UPDATE urls SET indexed_status = ?1 WHERE id = ?2",
             params!["confirmed", url_id],
         )
         .unwrap();
@@ -338,7 +338,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(status, "confirmed");
-        assert!(checked_at.is_some(), "checked_at should be set after verification");
+        assert!(checked_at.is_none(), "checked_at should remain NULL after indexation (reserved for audit)");
     }
 
     #[test]
@@ -354,7 +354,7 @@ mod tests {
         .unwrap();
 
         conn.execute(
-            "UPDATE urls SET indexed_status = ?1, checked_at = datetime('now') WHERE id = ?2",
+            "UPDATE urls SET indexed_status = ?1 WHERE id = ?2",
             params!["not_indexed", url_id],
         )
         .unwrap();
