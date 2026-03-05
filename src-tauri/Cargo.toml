@@ -2,7 +2,7 @@
 name = "serp404"
 version = "0.1.0"
 description = "SEO URL auditing desktop app"
-authors = ["you"]
+authors = ["Vincent Lahaye"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
