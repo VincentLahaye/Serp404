@@ -1,4 +1,5 @@
 mod commands;
+mod crawler;
 mod db;
 mod models;
 
@@ -32,6 +33,7 @@ pub fn run() {
             commands::settings::set_setting,
             commands::settings::get_all_settings,
             commands::settings::test_serper_key,
+            commands::collection::collect_from_sitemap,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
